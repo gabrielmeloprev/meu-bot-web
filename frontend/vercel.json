@@ -18,6 +18,6 @@
     }
   ],
   "env": {
-    "API_BASE_URL": "https://meu-bot-web-backend.onrender.com"
+    "API_BASE_URL": "https://meu-bot-whatsapp-backend.onrender.com"
   }
 }

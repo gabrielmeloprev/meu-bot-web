@@ -6,7 +6,7 @@
 // URL base da sua API. Mude isso quando for para produção.
 const API_BASE_URL = window.location.hostname === 'localhost' 
     ? 'http://localhost:3000' 
-    : 'https://meu-bot-web-backend.onrender.com';
+    : 'https://meu-bot-whatsapp-backend.onrender.com';
 
 console.log("Renderer.js (versão web ) foi carregado.");
 
