@@ -52,8 +52,21 @@ function showCustomConfirm(title, message) {
 }
 
 function gerarHtmlDoCard(contact) {
-    let html = `<strong>${contact.nome || ''}</strong>  
-<small>${contact.numero || ''}</small>`;
+    // Função para gerar iniciais do nome para o avatar
+    const getInitials = (name) => {
+        if (!name) return '?';
+        return name.split(' ').map(word => word.charAt(0)).join('').substring(0, 2).toUpperCase();
+    };
+    
+    let html = `<div class="contact-info">
+        <div class="contact-avatar">
+            <span>${getInitials(contact.nome)}</span>
+        </div>
+        <div>
+            <strong>${contact.nome || ''}</strong><br>
+            <small>${contact.numero || ''}</small>
+        </div>
+    </div>`;
     html += '<div class="card-info">';
     
     // Exibe informações adicionais do contato
@@ -201,13 +214,26 @@ function openMessageHistoryModal(contactName, contactPhone) {
     const historyModal = document.getElementById('message-history-modal');
     const contactNameSpan = document.getElementById('history-contact-name');
     const contactPhoneSpan = document.getElementById('history-contact-phone');
+    const contactAvatarSpan = document.getElementById('history-contact-avatar');
     const historyContainer = document.getElementById('message-history-container');
     
     if (!historyModal || !contactNameSpan || !contactPhoneSpan || !historyContainer) return;
     
+    // Função para gerar iniciais do nome para o avatar
+    const getInitials = (name) => {
+        if (!name) return '?';
+        return name.split(' ').map(word => word.charAt(0)).join('').substring(0, 2).toUpperCase();
+    };
+    
     contactNameSpan.textContent = contactName || 'Nome não informado';
     contactPhoneSpan.textContent = contactPhone || 'Telefone não informado';
+    if (contactAvatarSpan) contactAvatarSpan.textContent = getInitials(contactName);
     historyContainer.innerHTML = '<div class="loading-message">Carregando mensagens...</div>';
+    
+    // Armazenar dados do contato no modal para uso posterior
+    historyModal.dataset.contactName = contactName;
+    historyModal.dataset.contactPhone = contactPhone;
+    
     historyModal.style.display = 'flex';
     
     // Formatar o número para garantir que esteja no formato correto para a API
@@ -261,6 +287,16 @@ function renderMessageHistory(messages) {
         return;
     }
     
+    // Função para gerar iniciais do nome para o avatar
+    const getInitials = (name) => {
+        if (!name) return '?';
+        return name.split(' ').map(word => word.charAt(0)).join('').substring(0, 2).toUpperCase();
+    };
+    
+    // Obter nome do contato do modal
+    const historyModal = document.getElementById('message-history-modal');
+    const contactName = historyModal ? historyModal.dataset.contactName : '';
+    
     // Ordenar mensagens por timestamp (mais antigas primeiro)
     const sortedMessages = [...messages].sort((a, b) => a.timestamp - b.timestamp);
     
@@ -268,16 +304,42 @@ function renderMessageHistory(messages) {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message-bubble ${msg.fromMe ? 'message-sent' : 'message-received'}`;
         
-        const messageText = document.createElement('div');
-        messageText.className = 'message-text';
-        messageText.textContent = msg.message;
+        // Se for mensagem recebida, adicionar avatar
+        if (!msg.fromMe) {
+            const avatarDiv = document.createElement('div');
+            avatarDiv.className = 'message-avatar';
+            const avatarSpan = document.createElement('span');
+            avatarSpan.textContent = getInitials(contactName);
+            avatarDiv.appendChild(avatarSpan);
+            messageDiv.appendChild(avatarDiv);
+            
+            const wrapperDiv = document.createElement('div');
+            wrapperDiv.className = 'message-wrapper';
+            
+            const messageText = document.createElement('div');
+            messageText.className = 'message-text';
+            messageText.textContent = msg.message;
+            
+            const messageTime = document.createElement('div');
+            messageTime.className = 'message-time';
+            messageTime.textContent = formatMessageTime(msg.timestamp);
+            
+            wrapperDiv.appendChild(messageText);
+            wrapperDiv.appendChild(messageTime);
+            messageDiv.appendChild(wrapperDiv);
+        } else {
+            const messageText = document.createElement('div');
+            messageText.className = 'message-text';
+            messageText.textContent = msg.message;
+            
+            const messageTime = document.createElement('div');
+            messageTime.className = 'message-time';
+            messageTime.textContent = formatMessageTime(msg.timestamp);
+            
+            messageDiv.appendChild(messageText);
+            messageDiv.appendChild(messageTime);
+        }
         
-        const messageTime = document.createElement('div');
-        messageTime.className = 'message-time';
-        messageTime.textContent = formatMessageTime(msg.timestamp);
-        
-        messageDiv.appendChild(messageText);
-        messageDiv.appendChild(messageTime);
         container.appendChild(messageDiv);
     });
     
@@ -324,6 +386,66 @@ function formatMessageTime(timestamp) {
 function closeMessageModal() {
     const modal = document.getElementById('message-modal');
     if (modal) modal.style.display = 'none';
+}
+
+function closeMessageHistoryModal() {
+    const modal = document.getElementById('message-history-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+// Função para enviar mensagem do modal de histórico
+async function sendMessageFromHistoryModal() {
+    const historyModal = document.getElementById('message-history-modal');
+    const messageInput = document.getElementById('history-message-input');
+    const sendButton = document.getElementById('history-send-button');
+    
+    if (!historyModal || !messageInput || !sendButton) return;
+    
+    const message = messageInput.value.trim();
+    const contactPhone = historyModal.dataset.contactPhone;
+    const contactName = historyModal.dataset.contactName;
+    
+    if (!message || !contactPhone) {
+        showCustomAlert('Erro', 'Número e mensagem são obrigatórios.');
+        return;
+    }
+    
+    sendButton.disabled = true;
+    sendButton.textContent = 'Enviando...';
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/enviar-mensagem`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ numero: contactPhone, mensagem: message })
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.erro || 'Erro desconhecido do servidor');
+        }
+        
+        // Limpar o campo de mensagem
+        messageInput.value = '';
+        
+        // Adicionar a mensagem enviada ao histórico
+        const newMessage = {
+            message: message,
+            timestamp: Date.now(),
+            fromMe: true
+        };
+        
+        addMessageToHistory(newMessage);
+        
+        showCustomAlert('Sucesso', result.mensagem || 'Mensagem enviada com sucesso!');
+        
+    } catch (error) {
+        showCustomAlert('Erro', `Erro ao enviar mensagem: ${error.message}`);
+    } finally {
+        sendButton.disabled = false;
+        sendButton.textContent = 'Enviar';
+    }
 }
 
 async function sendMessageFromModal() {
@@ -403,11 +525,24 @@ function setupMessageModalListeners(elements) {
     // Configurar listeners para o modal de histórico de mensagens
     const historyModal = document.getElementById('message-history-modal');
     const historyCloseBtn = document.getElementById('history-close-btn');
-    historyCloseBtn?.addEventListener('click', () => {
-        if (historyModal) historyModal.style.display = 'none';
-    });
+    const historySendBtn = document.getElementById('history-send-button');
+    const historyMessageInput = document.getElementById('history-message-input');
+    
+    historyCloseBtn?.addEventListener('click', closeMessageHistoryModal);
+    historySendBtn?.addEventListener('click', sendMessageFromHistoryModal);
+    
     historyModal?.addEventListener('click', (event) => {
-        if (event.target === historyModal) historyModal.style.display = 'none';
+        if (event.target === historyModal) closeMessageHistoryModal();
+    });
+    
+    // Adicionar listener para Enter no input de mensagem do histórico
+    historyMessageInput?.addEventListener('keydown', (event) => {
+        if (event.ctrlKey && event.key === 'Enter') {
+            event.preventDefault();
+            sendMessageFromHistoryModal();
+        } else if (event.key === 'Escape') {
+            closeMessageHistoryModal();
+        }
     });
 }
 

@@ -104,7 +104,9 @@
             max-width: 70%;
             word-wrap: break-word;
             position: relative;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
+            display: flex;
+            flex-direction: column;
         }
         .message-sent {
             align-self: flex-end;
@@ -117,12 +119,58 @@
             background-color: #202C33;
             color: white;
             border-top-left-radius: 5px;
+            display: flex;
+            flex-direction: row;
+            align-items: flex-start;
+            gap: 10px;
+            max-width: 75%;
+        }
+        .message-received .message-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: #007acc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+        .message-received .message-content {
+            flex-grow: 1;
         }
         .message-time {
             font-size: 0.7em;
             opacity: 0.7;
             text-align: right;
             margin-top: 5px;
+        }
+        .contact-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #007acc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        .kanban-item .contact-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .kanban-item .contact-info .contact-avatar {
+            width: 35px;
+            height: 35px;
+            font-size: 12px;
+            margin-bottom: 0;
         }
         
         /* Estilos para o modal de seleção de colunas */
@@ -267,19 +315,33 @@
     
     <!-- Modal de Histórico de Mensagens -->
     <div id="message-history-modal" class="modal-backdrop">
-        <div class="modal-content" style="width: 600px;">
+        <div class="modal-content" style="width: 700px; max-height: 90vh;">
             <div class="modal-header">
-                <h2 class="modal-title">Histórico de Mensagens</h2>
+                <h2 class="modal-title">Chat com Contato</h2>
                 <button id="history-close-btn" class="modal-close-btn">&times;</button>
             </div>
-            <div class="modal-body">
-                <p>Histórico para: <strong id="history-contact-name"></strong> (<span id="history-contact-phone"></span>)</p>
-                <div id="message-history-container" style="max-height: 350px; overflow-y: auto; margin-top: 15px; border: 1px solid #444; padding: 15px; border-radius: 5px;">
+            <div class="modal-body" style="display: flex; flex-direction: column; height: 500px; padding: 0;">
+                <div style="padding: 20px; border-bottom: 1px solid #444; flex-shrink: 0;">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <div class="contact-avatar" style="width: 50px; height: 50px; border-radius: 50%; background-color: #007acc; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 18px;">
+                            <span id="history-contact-avatar">?</span>
+                        </div>
+                        <div>
+                            <p style="margin: 0; font-size: 16px; font-weight: bold;"><strong id="history-contact-name"></strong></p>
+                            <p style="margin: 0; font-size: 14px; color: #999;">(<span id="history-contact-phone"></span>)</p>
+                        </div>
+                    </div>
+                </div>
+                <div id="message-history-container" style="flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px;">
                     <!-- Mensagens serão carregadas dinamicamente aqui -->
                 </div>
-            </div>
-            <div class="modal-footer">
-                <button id="history-close-button" class="secondary">Fechar</button>
+                <div style="padding: 15px; border-top: 1px solid #444; flex-shrink: 0;">
+                    <div style="display: flex; gap: 10px; align-items: flex-end;">
+                        <textarea id="history-message-input" placeholder="Digite sua mensagem... (Ctrl+Enter para enviar)" style="flex-grow: 1; min-height: 40px; max-height: 100px; resize: vertical; border: 1px solid #444; background-color: #1a1a1a; color: #d4d4d4; padding: 10px; border-radius: 5px;"></textarea>
+                        <button id="history-send-btn" style="background-color: #4CAF50; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; margin-top: 0;">Enviar</button>
+                    </div>
+                    <div id="history-message-error" class="error-message" style="display: none; margin-top: 10px;"></div>
+                </div>
             </div>
         </div>
     </div>
