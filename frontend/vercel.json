@@ -17,7 +17,6 @@
       "dest": "/$1"
     }
   ],
-  "functions": {},
   "env": {
     "API_BASE_URL": "https://meu-bot-web-backend.onrender.com"
   }
