@@ -1,0 +1,16 @@
+{
+  "name": "meu-bot-web-frontend",
+  "version": "1.0.0",
+  "description": "Frontend do sistema de bot WhatsApp com Kanban",
+  "main": "index.html",
+  "scripts": {
+    "build": "echo 'Build completed - static files ready'",
+    "start": "echo 'Starting frontend server'",
+    "dev": "echo 'Development server ready'"
+  },
+  "keywords": ["whatsapp", "bot", "kanban", "frontend"],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {},
+  "dependencies": {}
+}

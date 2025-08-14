@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <meta charset="UTF-8" />
+    <title>Meu Bot Web</title>
+    <!-- Carregando bibliotecas da internet (CDN) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jkanban@1.3.1/dist/jkanban.min.css" />
+    <style>
+        /* Seus estilos completos estão aqui. Nenhuma alteração necessária. */
+        * { margin: 0; padding: 0; box-sizing: border-box; } html, body { overflow: hidden; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; height: 100vh; background-color: #1e1e1e; color: #d4d4d4; }
+        .sidebar { width: 220px; background-color: #252526; padding: 20px; display: flex; flex-direction: column; flex-shrink: 0; transition: width 0.3s ease-in-out; z-index: 10; }
+        .sidebar.collapsed { width: 70px; padding: 20px 10px; }
+        .sidebar-header { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-bottom: 30px; }
+        .sidebar.collapsed .sidebar-header { justify-content: center; }
+        .sidebar h1 { font-size: 24px; color: #007acc; margin: 0; }
+        #sidebar-toggle-btn { background: none; border: none; color: #d4d4d4; cursor: pointer; font-size: 24px; padding: 0 5px; margin: 0; }
+        .sidebar.collapsed h1, .sidebar.collapsed .nav-link span, .sidebar.collapsed .status-text { display: none; }
+        .sidebar nav { display: flex; flex-direction: column; gap: 8px; }
+        .nav-link { text-align: left; padding: 15px; border-radius: 5px; display: flex; align-items: center; gap: 12px; color: #d4d4d4; text-decoration: none; transition: background-color 0.3s; }
+        .nav-link:hover { background-color: #333333; }
+        .nav-link.active { background-color: #007acc; color: #ffffff; }
+        .sidebar.collapsed .nav-link { justify-content: center; padding: 15px 0; }
+        .main-content { flex-grow: 1; padding: 30px; overflow-y: auto; position: relative; }
+        .page { display: none; }
+        .page.active { display: block; }
+        h2 { font-size: 28px; color: #d4d4d4; padding-bottom: 10px; margin-bottom: 20px; }
+        h3 { font-size: 18px; margin-bottom: 10px; color: #cccccc; }
+        .card { background-color: #2d2d30; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #007acc; }
+        label { font-weight: bold; display: block; margin-top: 15px; margin-bottom: 5px; }
+        textarea, input[type="text"], input[type="search"] { width: 100%; padding: 10px; background-color: #3c3c3c; border: 1px solid #555; border-radius: 4px; color: #d4d4d4; font-size: 14px; }
+        button { padding: 12px 25px; background-color: #007acc; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; margin-top: 20px; transition: background-color 0.3s; margin-right: 10px; }
+        button:hover { background-color: #005a9e; }
+        button:disabled { background-color: #555; color: #999; cursor: not-allowed; }
+        button.secondary { background-color: #444; }
+        button.secondary:hover { background-color: #555; }
+        button.danger { background-color: #b71c1c; }
+        button.danger:hover { background-color: #e53935; }
+        pre { background-color: #1a1a1a; border: 1px solid #444; color: #a9b7c6; min-height: 100px; max-height: 350px; white-space: pre-wrap; word-wrap: break-word; font-size: 14px; line-height: 1.5; text-align: left; overflow-y: auto; padding: 15px; border-radius: 5px; }
+        #arquivo-selecionado { font-style: italic; color: #999; margin-left: 10px; }
+        .status-dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; flex-shrink: 0; }
+        .status-dot.red { background-color: #e53935; }
+        .status-dot.green { background-color: #43a047; }
+        .status-container p { display: flex; align-items: center; font-size: 16px; }
+        hr { margin: 20px 0; border-color: #44444450; }
+        .page#contatos.active { display: flex; flex-direction: column; height: calc(100vh - 60px ); }
+        .kanban-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #444; flex-wrap: wrap; gap: 15px; }
+        .kanban-header h2 { border-bottom: none; margin-bottom: 0px; }
+        .kanban-search { flex-grow: 1; max-width: 300px; }
+        .kanban-search input { margin-top: 0; }
+        .kanban-actions .icon-btn { font-size: 20px; padding: 8px 12px; margin-top: 0; }
+        #meuKanban { flex-grow: 1; overflow-x: auto; overflow-y: hidden; }
+        .kanban-container { display: flex; gap: 20px; padding-bottom: 15px; height: 100%; align-items: stretch; }
+        .kanban-board { background-color: #252526; padding: 10px; border-radius: 5px; width: 300px !important; flex-shrink: 0; display: flex; flex-direction: column; max-height: 100%; }
+        .kanban-board header { background-color: #007acc; color: white; padding: 10px; border-radius: 5px 5px 0 0; font-weight: bold; flex-shrink: 0; cursor: pointer; }
+        .kanban-board main { overflow-y: auto; flex-grow: 1; }
+        .kanban-item { background-color: #3c3c3c; padding: 10px; border-radius: 5px; margin-top: 10px; cursor: grab; }
+        .kanban-item:active { cursor: grabbing; }
+        .kanban-item-stop { border-left: 4px solid #e53935; }
+        .card-info { font-size: 12px; color: #b0b0b0; margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+        .card-info a { color: #66b0ff; text-decoration: none; }
+        .card-info a:hover { text-decoration: underline; }
+        .card-info .stop-tag { color: #ff8a80; font-weight: bold; }
+        .card-actions { margin-top: 10px; display: flex; gap: 8px; }
+        .btn-message { background-color: #4CAF50; color: white; padding: 4px 8px; font-size: 12px; border-radius: 4px; border: none; cursor: pointer; margin-top: 0; }
+        .btn-message:hover { background-color: #45a049; }
+        .btn-stop { background-color: #c62828; color: white; padding: 4px 8px; font-size: 12px; border-radius: 4px; border: none; cursor: pointer; margin-top: 0; }
+        .btn-stop:hover { background-color: #e53935; }
+        .btn-remove-stop { background-color: #2196F3; color: white; padding: 4px 8px; font-size: 12px; border-radius: 4px; border: none; cursor: pointer; margin-top: 0; }
+        .btn-remove-stop:hover { background-color: #1976D2; }
+        .kanban-item strong { font-size: 14px; margin-bottom: 5px; display: block; }
+        .kanban-item small { font-size: 12px; color: #999; display: block; margin-bottom: 8px; }
+        .card-info span { padding: 2px 0; border-bottom: 1px solid #444; }
+        .card-info span:last-child { border-bottom: none; }
+        .modal-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.7); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background-color: #2d2d30; width: 600px; max-width: 90%; border-radius: 8px; display: flex; flex-direction: column; max-height: 90vh; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+        .modal-header { padding: 20px; border-bottom: 1px solid #444; display: flex; justify-content: space-between; align-items: center; }
+        .modal-header .modal-title { border-bottom: none; margin: 0; padding: 0; font-size: 1.5em; }
+        .modal-header .modal-close-btn { background: none; border: none; color: #d4d4d4; font-size: 28px; cursor: pointer; margin: 0; padding: 0; line-height: 1; }
+        .modal-body { padding: 20px; overflow-y: auto; }
+        .modal-body.grid-form { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .modal-body .full-width { grid-column: 1 / -1; }
+        .modal-footer { padding: 20px; border-top: 1px solid #444; display: flex; justify-content: flex-end; align-items: center; gap: 10px; }
+        .modal-footer button { margin-top: 0; }
+        .modal-footer .btn-delete { margin-right: auto; }
+        .error-message { color: #ff4d4d; margin-top: 10px; font-size: 0.9em; background-color: rgba(255, 77, 77, 0.1); border: 1px solid rgba(255, 77, 77, 0.2); padding: 10px; border-radius: 4px; }
+        #qr-code-container { text-align: center; margin-top: 15px; }
+        #message-modal .modal-content { background-color: #2a2a2a; border: none; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); animation: modalSlideIn 0.3s ease-out; }
+        @keyframes modalSlideIn { from { opacity: 0; transform: translateY(-50px) scale(0.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        #message-modal .modal-header .modal-title { color: #4CAF50; }
+        #message-modal .modal-body textarea { min-height: 120px; border: 1px solid #444; background-color: #1a1a1a; resize: vertical; }
+        #message-modal .modal-body textarea:focus { outline: none; border-color: #4CAF50; box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2); }
+        
+        /* Estilos para o histórico de mensagens */
+        #message-history-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .message-bubble {
+            padding: 10px 15px;
+            border-radius: 15px;
+            max-width: 70%;
+            word-wrap: break-word;
+            position: relative;
+            margin-bottom: 10px;
+        }
+        .message-sent {
+            align-self: flex-end;
+            background-color: #005C4B;
+            color: white;
+            border-top-right-radius: 5px;
+        }
+        .message-received {
+            align-self: flex-start;
+            background-color: #202C33;
+            color: white;
+            border-top-left-radius: 5px;
+        }
+        .message-time {
+            font-size: 0.7em;
+            opacity: 0.7;
+            text-align: right;
+            margin-top: 5px;
+        }
+        
+        /* Estilos para o modal de seleção de colunas */
+        .column-selection-item {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #333;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .column-selection-item input[type="checkbox"] {
+            margin-right: 10px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .column-selection-item label {
+            cursor: pointer;
+            margin-top: 0;
+            margin-bottom: 0;
+            font-weight: normal;
+        }
+    </style>
+</head>
+<body>
+    <!-- O HTML do seu body permanece exatamente o mesmo -->
+    <div id="sidebar" class="sidebar">
+        <div class="sidebar-header">
+            <h1><span>Meu Bot</span></h1>
+            <button id="sidebar-toggle-btn" title="Recolher menu">«</button>
+        </div>
+        <nav>
+            <a href="#" class="nav-link active" data-page="envio">📦<span>Envios</span></a>
+            <a href="#" class="nav-link" data-page="contatos">📇<span>Contatos</span></a>
+            <a href="#" class="nav-link" data-page="configuracoes">⚙️<span>Configurações</span></a>
+        </nav>
+        <div class="status-container" style="margin-top: auto;">
+            <p><span id="wa-status-dot" class="status-dot red"></span><span class="status-text">WhatsApp</span></p>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div id="envio" class="page active">
+            <h2>Painel de Ações</h2>
+            <div class="card">
+                <h3>Envio Manual</h3>
+                <label for="numeros">Números (um por linha):</label>
+                <textarea id="numeros" rows="5"></textarea>
+                <label for="legenda">Mensagem / Legenda:</label>
+                <textarea id="legenda" rows="3"></textarea>
+                <button class="secondary" id="btn-selecionar-arquivo">Selecionar Arquivo</button>
+                <span id="arquivo-selecionado">Nenhum arquivo.</span>
+                <input type="file" id="seletor-arquivo" style="display: none;">
+                <button id="btn-enviar-manual">Enviar</button>
+            </div>
+            <div class="card">
+                <h3>Registro de Envios</h3>
+                <pre id="log-envios">Aguardando ações de envio...</pre>
+            </div>
+        </div>
+        <div id="contatos" class="page">
+            <div class="kanban-header">
+                <h2>Contatos Kanban</h2>
+                <div class="kanban-search">
+                    <input type="search" id="kanban-search-input" placeholder="🔎 Procurar por número...">
+                </div>
+                <div class="kanban-actions">
+                    <button id="btn-add-board" class="icon-btn secondary" title="Adicionar Nova Coluna">➕ Coluna</button>
+                    <button id="btn-abrir-modal-contato" class="icon-btn" title="Adicionar Novo Contato">👤+</button>
+                    <button id="btn-enviar-kanban" class="icon-btn" style="background-color: #4CAF50;" title="Enviar Mensagens em Massa">📱 Envio em Massa</button>
+                </div>
+            </div>
+            <div id="meuKanban"></div>
+        </div>
+        <div id="configuracoes" class="page">
+            <h2>Configurações</h2>
+            <div class="card">
+                <h3>Conexão do WhatsApp</h3>
+                <p>O status da conexão com o WhatsApp é gerenciado automaticamente pelo servidor.</p>
+                <div id="qr-code-container">
+                    <pre id="log-conexao">Aguardando estado da conexão...</pre>
+                    <div id="qrcode-display" style="margin: 15px auto 0 auto; background-color: white; padding: 10px; border-radius: 8px; width: 270px; height: 270px; display: none;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="contact-modal-backdrop" class="modal-backdrop">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title" class="modal-title">Adicionar Novo Contato</h2>
+                <button id="btn-close-modal" class="modal-close-btn">&times;</button>
+            </div>
+            <form id="modal-contact-form">
+                <div class="modal-body grid-form">
+                    <div class="full-width"><label for="modal-contact-nome">Nome:</label><input type="text" id="modal-contact-nome"></div>
+                    <div><label for="modal-contact-numero">Número (55+DDD+Num):</label><input type="text" id="modal-contact-numero"></div>
+                    <div><label for="modal-contact-cpf">CPF:</label><input type="text" id="modal-contact-cpf"></div>
+                    <div class="full-width"><label for="modal-contact-endereco">Endereço:</label><input type="text" id="modal-contact-endereco"></div>
+                    <div><label for="modal-contact-cidade">Cidade:</label><input type="text" id="modal-contact-cidade"></div>
+                    <div><label for="modal-contact-estado">Estado:</label><input type="text" id="modal-contact-estado"></div>
+                    <div><label for="modal-contact-dataNascimento">Data de Nascimento:</label><input type="text" id="modal-contact-dataNascimento"></div>
+                    <div><label for="modal-contact-objetivo">Objetivo:</label><input type="text" id="modal-contact-objetivo"></div>
+                    <div class="full-width"><label for="modal-contact-resumoAtendimento">Resumo do Atendimento:</label><textarea id="modal-contact-resumoAtendimento" rows="4"></textarea></div>
+                </div>
+                <div class="modal-footer">
+                    <button id="btn-delete-contact" class="danger btn-delete" type="button">Apagar Contato</button>
+                    <button id="btn-save-contact" type="submit">Salvar Contato</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="prompt-modal-backdrop" class="modal-backdrop">
+        <div class="modal-content" style="width: 400px;">
+            <div class="modal-header"><h2 id="prompt-modal-title" class="modal-title">Título do Prompt</h2></div>
+            <div class="modal-body"><label for="prompt-modal-input">Nome:</label><input type="text" id="prompt-modal-input"></div>
+            <div class="modal-footer"><button id="prompt-modal-btn-cancel" class="secondary" type="button">Cancelar</button><button id="prompt-modal-btn-save" type="button">Salvar</button></div>
+        </div>
+    </div>
+    <div id="message-modal" class="modal-backdrop">
+        <div class="modal-content" style="width: 500px;">
+            <div class="modal-header">
+                <h2 class="modal-title">Enviar Mensagem</h2>
+                <button id="message-close-btn" class="modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>A enviar para: <strong id="message-contact-name"></strong> (<span id="message-contact-phone"></span>)</p>
+                <textarea id="message-textarea" placeholder="Digite a sua mensagem aqui... (Ctrl+Enter para enviar)" rows="5"></textarea>
+                <div id="message-error" class="error-message" style="display: none;"></div>
+                <div class="message-history-btn-container" style="margin-top: 15px;">
+                    <button id="view-message-history-btn" class="secondary">Ver Histórico de Mensagens</button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="message-cancel-btn" class="secondary">Cancelar</button>
+                <button id="message-send-btn">Enviar Mensagem</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal de Histórico de Mensagens -->
+    <div id="message-history-modal" class="modal-backdrop">
+        <div class="modal-content" style="width: 600px;">
+            <div class="modal-header">
+                <h2 class="modal-title">Histórico de Mensagens</h2>
+                <button id="history-close-btn" class="modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Histórico para: <strong id="history-contact-name"></strong> (<span id="history-contact-phone"></span>)</p>
+                <div id="message-history-container" style="max-height: 350px; overflow-y: auto; margin-top: 15px; border: 1px solid #444; padding: 15px; border-radius: 5px;">
+                    <!-- Mensagens serão carregadas dinamicamente aqui -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="history-close-button" class="secondary">Fechar</button>
+            </div>
+        </div>
+    </div>
+    <div id="notification-modal" class="modal-backdrop">
+        <div class="modal-content" style="width: 400px;">
+            <div class="modal-header">
+                <h2 id="notification-title" class="modal-title"></h2>
+            </div>
+            <div class="modal-body">
+                <p id="notification-message" style="white-space: pre-wrap;"></p>
+            </div>
+            <div class="modal-footer" style="justify-content: center;">
+                <button id="notification-btn-ok">OK</button>
+            </div>
+        </div>
+    </div>
+    <div id="confirmation-modal" class="modal-backdrop">
+        <div class="modal-content" style="width: 400px;">
+            <div class="modal-header">
+                <h2 id="confirmation-title" class="modal-title"></h2>
+            </div>
+            <div class="modal-body">
+                <p id="confirmation-message"></p>
+            </div>
+            <div class="modal-footer">
+                <button id="confirmation-btn-cancel" class="secondary">Cancelar</button>
+                <button id="confirmation-btn-confirm">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPTS -->
+    <!-- Biblioteca para o Kanban -->
+    <script src="https://cdn.jsdelivr.net/npm/jkanban@1.3.1/dist/jkanban.min.js"></script>
+
+    <!-- Biblioteca para comunicação em tempo real -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+    <!-- Biblioteca para gerar o QR Code -->
+    <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
+
+    <!-- Seu script principal, que usa todas as bibliotecas acima -->
+    <script src="./renderer.js"></script>
+
+</body>
+</html>
